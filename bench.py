@@ -76,6 +76,7 @@ def bench(style, model_path):
     if not output_path.exists():
         raise AssertionError(f"main file for style {style} not found")
 
+    print(f" === BENCHMARKING IN STYLE {style} ===")
     if style in ("clean", "openblas", "mkl"):
         maxthreads = int(os.environ.get("MAXTHREADS", "16")) + 1
         log.info("running from 1 to %d threads ", maxthreads - 1)
@@ -91,6 +92,15 @@ def bench(style, model_path):
             if system_info is None:
                 system_info = given_system_info
                 print("# system info:", raw_info)
+                n_threads = system_info["n_threads"]
+                _, total_threads = n_threads.split("/")
+                total_threads = int(total_threads.strip())
+                if maxthreads > total_threads:
+                    log.warning(
+                        "system has %d threads but MAXTHREADS is %d, likely decrease it...",
+                        total_threads,
+                        maxthreads - 1,
+                    )
             blas = system_info["BLAS"]
             if style == "clean" and blas != "0":
                 raise AssertionError(f"clean bench wanted BLAS=0, got {blas}")
