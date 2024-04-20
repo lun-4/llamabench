@@ -119,9 +119,13 @@ def bench(style, model_path):
                 output_path, model_path, ["-t", str(thread_count)]
             )
 
+            modifier = ""
+            if style in ("openblas", "mkl"):
+                modifier = f"{style}, "
+
             tokens_sec = round(Decimal(1000) / timings.eval_ms_per_token, 2)
             print(
-                f"cpu (-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
+                f"cpu ({modifier}-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
             )
     elif style == "vulkan":
         gpulayers = system_info["GPULAYERS"]
