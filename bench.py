@@ -95,6 +95,11 @@ def bench(style, model_path):
     _, total_threads = n_threads.split("/")
     total_threads = int(total_threads.strip())
 
+    # print model name
+    with Path("/proc/cpuinfo").open() as cpuinfo_fd:
+        cpuinfo = cpuinfo_fd.read()
+        model_name = re.search(r"model name\s+:\s+(.*)", cpuinfo).group(1).strip()
+        print("# cpu model name:", model_name)
     blas = system_info["BLAS"]
     if style == "clean" and blas != "0":
         raise AssertionError(f"clean bench wanted BLAS=0, got {blas}")
@@ -275,6 +280,7 @@ def main():
     log.info("LLAMACPP=%s", llamacpp_path)
     log.info("MODEL=%s", model_path)
     log.info("MAKEFLAGS=%s", makeflags)
+    log.info("hostname=%r", socket.gethostname())
 
     build(llamacpp_path, makeflags, "clean")
     bench("clean", model_path)
