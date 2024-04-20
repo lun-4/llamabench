@@ -74,6 +74,9 @@ def bench(style, model_path):
         maxthreads = int(os.environ.get("MAXTHREADS", "8")) + 1
         log.info("running from 1 to %d threads ", maxthreads - 1)
 
+        print(
+            "threadcount,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token"
+        )
         for thread_count in range(1, maxthreads):
             sample_ms_per_token, prompt_eval_ms_per_token, eval_ms_per_token = (
                 run_model(output_path, model_path, ["-t", str(thread_count)])
