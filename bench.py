@@ -10,12 +10,7 @@ from pathlib import Path
 def check_output(cmd, *args, **kwargs):
     cwd = kwargs["cwd"]
     print(f"cd {cwd} && {shlex.join(cmd)}")
-    return subprocess.check_output(
-        cmd,
-        *args,
-        **kwargs,
-        stderr=subprocess.PIPE,
-    )
+    return subprocess.check_output(cmd, *args, **kwargs, stderr=subprocess.STDOUT)
 
 
 log = logging.getLogger(__name__)
@@ -54,6 +49,40 @@ def build(llamacpp_path: Path, makeflags: str, style) -> None:
     mark_file.touch(exist_ok=True)
 
     shutil.copy(llamacpp_path / "main", output_path)
+
+
+BASEPROMPT = "Write a paragraph about the hit game Among Us.\n\n"
+
+
+def bench(style, model_path):
+    output_path = Path.cwd() / f"main-{style}"
+    if not output_path.exists():
+        raise AssertionError("main file not found")
+
+    out = run_model(output_path, model_path, ["-t", "1"])
+    print(out)
+
+
+def run_model(output_path, model_path, llamacpp_args):
+    return check_output(
+        [
+            str(output_path),
+            "-m",
+            str(model_path),
+            "--top_k",
+            "10000",
+            "--temp",
+            "0.4",
+            "--repeat-penalty",
+            "1",
+            "-n",
+            "128",
+            "-p",
+            BASEPROMPT,
+        ]
+        + llamacpp_args,
+        cwd=Path.cwd(),
+    )
 
 
 def main():
@@ -99,7 +128,7 @@ def main():
 
     # build normally
     build(llamacpp_path, makeflags, "clean")
-    # bench()
+    bench("clean", model_path)
 
 
 if __name__ == "__main__":
