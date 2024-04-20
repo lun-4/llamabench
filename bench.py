@@ -71,7 +71,7 @@ def bench(style, model_path):
         raise AssertionError("main file not found")
 
     if style == "clean":
-        maxthreads = int(os.environ.get("MAXTHREADS", "8")) + 1
+        maxthreads = int(os.environ.get("MAXTHREADS", "16")) + 1
         log.info("running from 1 to %d threads ", maxthreads - 1)
 
         print(
