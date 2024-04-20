@@ -5,6 +5,7 @@ import logging
 import shutil
 import shlex
 import subprocess
+from decimal import Decimal
 from pathlib import Path
 
 SAMPLE_TIME_REGEX = re.compile(
@@ -75,14 +76,15 @@ def bench(style, model_path):
         log.info("running from 1 to %d threads ", maxthreads - 1)
 
         print(
-            "threadcount,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token"
+            "threadcount,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second"
         )
         for thread_count in range(1, maxthreads):
             sample_ms_per_token, prompt_eval_ms_per_token, eval_ms_per_token = (
                 run_model(output_path, model_path, ["-t", str(thread_count)])
             )
+            tokens_sec = round(Decimal(1000) / eval_ms_per_token, 2)
             print(
-                f"{thread_count},{sample_ms_per_token},{prompt_eval_ms_per_token},{eval_ms_per_token}"
+                f"{thread_count},{sample_ms_per_token},{prompt_eval_ms_per_token},{eval_ms_per_token},{tokens_sec}"
             )
 
 
@@ -108,11 +110,11 @@ def run_model(output_path, model_path, llamacpp_args):
     )
     text = out.decode()
     sample_time_match = re.search(SAMPLE_TIME_REGEX, text)
-    sample_ms_per_token = float(sample_time_match.group(2))
+    sample_ms_per_token = Decimal(sample_time_match.group(2))
     prompt_eval_time_match = re.search(PROMPT_EVAL_TIME_REGEX, text)
-    prompt_eval_ms_per_token = float(prompt_eval_time_match.group(2))
+    prompt_eval_ms_per_token = Decimal(prompt_eval_time_match.group(2))
     eval_time_match = re.search(EVAL_TIME_REGEX, text)
-    eval_ms_per_token = float(eval_time_match.group(2))
+    eval_ms_per_token = Decimal(eval_time_match.group(2))
     return sample_ms_per_token, prompt_eval_ms_per_token, eval_ms_per_token
 
 
