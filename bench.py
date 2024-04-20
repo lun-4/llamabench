@@ -58,6 +58,10 @@ def build(llamacpp_path: Path, makeflags: str, style) -> None:
             check_output(
                 ["make", "LLAMA_OPENBLAS=1"] + shlex.split(makeflags), cwd=llamacpp_path
             )
+        elif style == "vulkan":
+            check_output(
+                ["make", "LLAMA_VULKAN=1"] + shlex.split(makeflags), cwd=llamacpp_path
+            )
         else:
             raise AssertionError("unknown build style " + style)
     # now that its built, mark it
@@ -81,7 +85,7 @@ def bench(style, model_path):
     system_info = None
     log.info("running probe...")
     timings, raw_info, given_system_info = run_model(
-        output_path, model_path, ["-t", "1"], tokens=1
+        output_path, model_path, ["-t", "1"], tokens=1, vulkan=style == "vulkan"
     )
 
     system_info = given_system_info
@@ -100,15 +104,15 @@ def bench(style, model_path):
         "config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second"
     )
 
-    if style in ("clean", "openblas", "mkl"):
-        maxthreads = int(os.environ.get("MAXTHREADS", "16")) + 1
-        if maxthreads > total_threads:
-            log.warning(
-                "system has %d threads but MAXTHREADS is %d, likely decrease it...",
-                total_threads,
-                maxthreads - 1,
-            )
+    maxthreads = int(os.environ.get("MAXTHREADS", "16")) + 1
+    if maxthreads > total_threads:
+        log.warning(
+            "system has %d threads but MAXTHREADS is %d, likely decrease it...",
+            total_threads,
+            maxthreads - 1,
+        )
 
+    if style in ("clean", "openblas", "mkl"):
         log.info("running from 1 to %d threads only", maxthreads - 1)
         for thread_count in range(1, maxthreads):
             timings, raw_info, given_system_info = run_model(
@@ -119,6 +123,45 @@ def bench(style, model_path):
             print(
                 f"cpu (-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
             )
+    elif style == "vulkan":
+        gpulayers = system_info["GPULAYERS"]
+        _, max_gpu_layers = gpulayers.split("/")
+        max_gpu_layers = int(max_gpu_layers.strip())
+
+        log.info("max gpu layers: %d", max_gpu_layers)
+
+        try:
+            gpu_layer_step_count = int(os.environ["GPU_LAYER_STEP_COUNT"])
+        except KeyError:
+            gpu_layer_step_count = 5
+            log.warning(
+                "GPU_LAYER_STEP_COUNT not set, defaulting to %d", gpu_layer_step_count
+            )
+
+        log.info(
+            "vulkan bench, running from ngl=0 to ngl=%d (with step count = %d)",
+            max_gpu_layers,
+            gpu_layer_step_count,
+        )
+        for gpu_layers in range(0, max_gpu_layers, gpu_layer_step_count):
+            log.info(
+                "vulkan bench, running from -t 1 to -t %d for -ngl %d",
+                maxthreads,
+                gpu_layers,
+            )
+
+            for thread_count in range(1, maxthreads):
+                timings, raw_info, given_system_info = run_model(
+                    output_path,
+                    model_path,
+                    ["-t", str(thread_count), "-ngl", str(gpu_layers)],
+                )
+
+                tokens_sec = round(Decimal(1000) / timings.eval_ms_per_token, 2)
+                print(
+                    f"gpu (-t {thread_count}, -ngl {gpu_layers}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
+                )
+
     else:
         raise AssertionError(f"invalid style for bench: {style}")
 
@@ -142,7 +185,7 @@ def parse_system_info(raw: str) -> dict:
     return info
 
 
-def run_model(output_path, model_path, llamacpp_args, *, tokens=None):
+def run_model(output_path, model_path, llamacpp_args, *, tokens=None, vulkan=False):
     tokens = tokens or "12"  # when ready, change to 128
     tokens = str(tokens)
     out = check_output(
@@ -172,6 +215,13 @@ def run_model(output_path, model_path, llamacpp_args, *, tokens=None):
     eval_time_match = re.search(EVAL_TIME_REGEX, text)
     eval_ms_per_token = Decimal(eval_time_match.group(2))
     system_info = re.search(r"system_info: (.*)", text).group(1)
+    if vulkan:
+        system_info += " | VULKAN0 = " + (
+            re.search(r"Vulkan0: (.*)", text).group(1).replace("|", ",")
+        )
+        system_info += " | GPULAYERS = " + re.search(
+            r"llm_load_tensors: offloaded (.*) layers to GPU", text
+        ).group(1)
     return (
         Timings(sample_ms_per_token, prompt_eval_ms_per_token, eval_ms_per_token),
         system_info,
@@ -221,6 +271,8 @@ def main():
     log.info("MAKEFLAGS=%s", makeflags)
 
     # build normally
+    build(llamacpp_path, makeflags, "vulkan")
+    bench("vulkan", model_path)
     build(llamacpp_path, makeflags, "openblas")
     bench("openblas", model_path)
     build(llamacpp_path, makeflags, "clean")
