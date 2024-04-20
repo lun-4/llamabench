@@ -105,7 +105,7 @@ def bench(style, model_path):
     )
 
     maxthreads = int(os.environ.get("MAXTHREADS", "16")) + 1
-    if maxthreads > total_threads:
+    if (maxthreads - 1) > total_threads:
         log.warning(
             "system has %d threads but MAXTHREADS is %d, likely decrease it...",
             total_threads,
