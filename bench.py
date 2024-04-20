@@ -270,13 +270,13 @@ def main():
     log.info("MODEL=%s", model_path)
     log.info("MAKEFLAGS=%s", makeflags)
 
-    # build normally
-    build(llamacpp_path, makeflags, "vulkan")
-    bench("vulkan", model_path)
-    build(llamacpp_path, makeflags, "openblas")
-    bench("openblas", model_path)
     build(llamacpp_path, makeflags, "clean")
     bench("clean", model_path)
+    build(llamacpp_path, makeflags, "openblas")
+    bench("openblas", model_path)
+    if can_vulkan:
+        build(llamacpp_path, makeflags, "vulkan")
+        bench("vulkan", model_path)
 
 
 if __name__ == "__main__":
