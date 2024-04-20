@@ -133,13 +133,13 @@ def bench(style, model_path):
         try:
             gpu_layer_step_count = int(os.environ["GPU_LAYER_STEP_COUNT"])
         except KeyError:
-            gpu_layer_step_count = 5
+            gpu_layer_step_count = 4
             log.warning(
                 "GPU_LAYER_STEP_COUNT not set, defaulting to %d", gpu_layer_step_count
             )
 
         log.info(
-            "vulkan bench, running from ngl=0 to ngl=%d (with step count = %d)",
+            "vulkan bench, running from -ngl 0 to -ngl %d (with step count = %d)",
             max_gpu_layers,
             gpu_layer_step_count,
         )
