@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 import shutil
 import shlex
 import subprocess
@@ -15,6 +16,34 @@ def check_output(cmd, *args, **kwargs):
         **kwargs,
         stderr=subprocess.PIPE,
     )
+
+
+log = logging.getLogger(__name__)
+
+
+def build(llamacpp_path: Path, makeflags: str, style) -> None:
+    log.info("building with style %r", style)
+
+    files = list(llamacpp_path.glob("bench-mark-*"))
+    if len(files) > 0:
+        log.warning("multiple mark files, ignoring them all")
+
+    if len(files) == 1:
+        existing_mark_file = files[0]
+        if existing_mark_file.stem == "bench-mark-" + style:
+            log.info("mark file exists, skipping build")
+            return
+
+    # tfw subprocess doesnt support Path as cwd input
+    llamacpp_path = str(llamacpp_path)
+    check_output(["make", "clean"], cwd=llamacpp_path)
+    if style == "clean":
+        check_output(["make"] + shlex.split(makeflags), cwd=llamacpp_path)
+    else:
+        raise AssertionError("unknown build style " + style)
+    # now that its built, mark it
+    mark_file = Path(llamacpp_path) / f"bench-mark-{style}.o"
+    mark_file.touch(exist_ok=True)
 
 
 def main():
@@ -59,12 +88,9 @@ def main():
     print("MAKEFLAGS", makeflags)
 
     # build normally
-    llamacpp_path = str(
-        llamacpp_path
-    )  # tfw subprocess doesnt support Path as cwd input
-    check_output(["make", "clean"], cwd=llamacpp_path)
-    check_output(["make"] + shlex.split(makeflags), cwd=llamacpp_path)
+    build(llamacpp_path, makeflags, "clean")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     main()
