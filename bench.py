@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import logging
 import shutil
@@ -6,10 +7,20 @@ import shlex
 import subprocess
 from pathlib import Path
 
+SAMPLE_TIME_REGEX = re.compile(
+    r"sample time =\s+(\d+\.\d+)\s+ms \/.*?(\d+\.\d+)\s+ms per token"
+)
+PROMPT_EVAL_TIME_REGEX = re.compile(
+    r"prompt eval time =\s+(\d+\.\d+)\s+ms \/.*?(\d+\.\d+)\s+ms per token"
+)
+EVAL_TIME_REGEX = re.compile(
+    r"eval time =\s+(\d+\.\d+)\s+ms \/.*?(\d+\.\d+)\s+ms per token"
+)
+
 
 def check_output(cmd, *args, **kwargs):
     cwd = kwargs["cwd"]
-    print(f"cd {cwd} && {shlex.join(cmd)}")
+    log.info("running: %r", f"cd {cwd} && {shlex.join(cmd)}")
     return subprocess.check_output(cmd, *args, **kwargs, stderr=subprocess.STDOUT)
 
 
@@ -59,12 +70,21 @@ def bench(style, model_path):
     if not output_path.exists():
         raise AssertionError("main file not found")
 
-    out = run_model(output_path, model_path, ["-t", "1"])
-    print(out)
+    if style == "clean":
+        maxthreads = int(os.environ.get("MAXTHREADS", "8")) + 1
+        log.info("running from 1 to %d threads ", maxthreads - 1)
+
+        for thread_count in range(1, maxthreads):
+            sample_ms_per_token, prompt_eval_ms_per_token, eval_ms_per_token = (
+                run_model(output_path, model_path, ["-t", str(thread_count)])
+            )
+            print(
+                f"{thread_count},{sample_ms_per_token},{prompt_eval_ms_per_token},{eval_ms_per_token}"
+            )
 
 
 def run_model(output_path, model_path, llamacpp_args):
-    return check_output(
+    out = check_output(
         [
             str(output_path),
             "-m",
@@ -76,13 +96,21 @@ def run_model(output_path, model_path, llamacpp_args):
             "--repeat-penalty",
             "1",
             "-n",
-            "128",
+            "12",  # use 128 lol
             "-p",
             BASEPROMPT,
         ]
         + llamacpp_args,
         cwd=Path.cwd(),
     )
+    text = out.decode()
+    sample_time_match = re.search(SAMPLE_TIME_REGEX, text)
+    sample_ms_per_token = float(sample_time_match.group(2))
+    prompt_eval_time_match = re.search(PROMPT_EVAL_TIME_REGEX, text)
+    prompt_eval_ms_per_token = float(prompt_eval_time_match.group(2))
+    eval_time_match = re.search(EVAL_TIME_REGEX, text)
+    eval_ms_per_token = float(eval_time_match.group(2))
+    return sample_ms_per_token, prompt_eval_ms_per_token, eval_ms_per_token
 
 
 def main():
@@ -122,9 +150,9 @@ def main():
         if not shutil.which("vulkaninfo"):
             raise Exception("VULKAN=1 but vulkaninfo not found")
 
-    print("LLAMACPP=", llamacpp_path)
-    print("MODEL=", model_path)
-    print("MAKEFLAGS", makeflags)
+    log.info("LLAMACPP=%s", llamacpp_path)
+    log.info("MODEL=%s", model_path)
+    log.info("MAKEFLAGS=%s", makeflags)
 
     # build normally
     build(llamacpp_path, makeflags, "clean")
