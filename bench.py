@@ -77,39 +77,47 @@ def bench(style, model_path):
         raise AssertionError(f"main file for style {style} not found")
 
     print(f" === BENCHMARKING IN STYLE {style} ===")
+
+    system_info = None
+    log.info("running probe...")
+    timings, raw_info, given_system_info = run_model(
+        output_path, model_path, ["-t", "1"], tokens=1
+    )
+
+    system_info = given_system_info
+    print("# system info:", raw_info)
+    n_threads = system_info["n_threads"]
+    _, total_threads = n_threads.split("/")
+    total_threads = int(total_threads.strip())
+
+    blas = system_info["BLAS"]
+    if style == "clean" and blas != "0":
+        raise AssertionError(f"clean bench wanted BLAS=0, got {blas}")
+    elif style in ("openblas", "mkl") and blas != "1":
+        raise AssertionError(f"openblas/mkl bench wanted BLAS=1, got {blas}")
+
+    print(
+        "config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second"
+    )
+
     if style in ("clean", "openblas", "mkl"):
         maxthreads = int(os.environ.get("MAXTHREADS", "16")) + 1
-        log.info("running from 1 to %d threads ", maxthreads - 1)
+        if maxthreads > total_threads:
+            log.warning(
+                "system has %d threads but MAXTHREADS is %d, likely decrease it...",
+                total_threads,
+                maxthreads - 1,
+            )
 
-        print(
-            "threadcount,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second"
-        )
-        system_info = None
+        log.info("running from 1 to %d threads only", maxthreads - 1)
         for thread_count in range(1, maxthreads):
             timings, raw_info, given_system_info = run_model(
                 output_path, model_path, ["-t", str(thread_count)]
             )
-            if system_info is None:
-                system_info = given_system_info
-                print("# system info:", raw_info)
-                n_threads = system_info["n_threads"]
-                _, total_threads = n_threads.split("/")
-                total_threads = int(total_threads.strip())
-                if maxthreads > total_threads:
-                    log.warning(
-                        "system has %d threads but MAXTHREADS is %d, likely decrease it...",
-                        total_threads,
-                        maxthreads - 1,
-                    )
-            blas = system_info["BLAS"]
-            if style == "clean" and blas != "0":
-                raise AssertionError(f"clean bench wanted BLAS=0, got {blas}")
-            elif style in ("openblas", "mkl") and blas != "1":
-                raise AssertionError(f"openblas/mkl bench wanted BLAS=1, got {blas}")
 
             tokens_sec = round(Decimal(1000) / timings.eval_ms_per_token, 2)
             print(
-                f"{thread_count},{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
+                f"cpu (-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
             )
     else:
         raise AssertionError(f"invalid style for bench: {style}")
@@ -134,7 +142,9 @@ def parse_system_info(raw: str) -> dict:
     return info
 
 
-def run_model(output_path, model_path, llamacpp_args):
+def run_model(output_path, model_path, llamacpp_args, *, tokens=None):
+    tokens = tokens or "12"  # when ready, change to 128
+    tokens = str(tokens)
     out = check_output(
         [
             str(output_path),
@@ -147,7 +157,7 @@ def run_model(output_path, model_path, llamacpp_args):
             "--repeat-penalty",
             "1",
             "-n",
-            "12",  # use 128 lol
+            tokens,
             "-p",
             BASEPROMPT,
         ]
