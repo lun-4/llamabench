@@ -22,28 +22,38 @@ log = logging.getLogger(__name__)
 
 
 def build(llamacpp_path: Path, makeflags: str, style) -> None:
+    output_path = Path.cwd() / f"main-{style}"
+    if output_path.exists():
+        log.info("main output file exists, skipping build (style=%r)", style)
+        return
+
     log.info("building with style %r", style)
 
     files = list(llamacpp_path.glob("bench-mark-*"))
     if len(files) > 0:
         log.warning("multiple mark files, ignoring them all")
+    build = True
 
     if len(files) == 1:
         existing_mark_file = files[0]
         if existing_mark_file.stem == "bench-mark-" + style:
             log.info("mark file exists, skipping build")
-            return
+            build = False
 
     # tfw subprocess doesnt support Path as cwd input
-    llamacpp_path = str(llamacpp_path)
-    check_output(["make", "clean"], cwd=llamacpp_path)
-    if style == "clean":
-        check_output(["make"] + shlex.split(makeflags), cwd=llamacpp_path)
-    else:
-        raise AssertionError("unknown build style " + style)
+    if build:
+        llamacpp_path = str(llamacpp_path)
+        check_output(["make", "clean"], cwd=llamacpp_path)
+        if style == "clean":
+            check_output(["make"] + shlex.split(makeflags), cwd=llamacpp_path)
+        else:
+            raise AssertionError("unknown build style " + style)
     # now that its built, mark it
-    mark_file = Path(llamacpp_path) / f"bench-mark-{style}.o"
+    llamacpp_path = Path(llamacpp_path)
+    mark_file = llamacpp_path / f"bench-mark-{style}.o"
     mark_file.touch(exist_ok=True)
+
+    shutil.copy(llamacpp_path / "main", output_path)
 
 
 def main():
@@ -89,6 +99,7 @@ def main():
 
     # build normally
     build(llamacpp_path, makeflags, "clean")
+    # bench()
 
 
 if __name__ == "__main__":
