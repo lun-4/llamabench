@@ -5,6 +5,7 @@ import logging
 import shutil
 import shlex
 import subprocess
+from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 
@@ -53,6 +54,10 @@ def build(llamacpp_path: Path, makeflags: str, style) -> None:
         check_output(["make", "clean"], cwd=llamacpp_path)
         if style == "clean":
             check_output(["make"] + shlex.split(makeflags), cwd=llamacpp_path)
+        elif style == "openblas":
+            check_output(
+                ["make", "LLAMA_OPENBLAS=1"] + shlex.split(makeflags), cwd=llamacpp_path
+            )
         else:
             raise AssertionError("unknown build style " + style)
     # now that its built, mark it
@@ -69,23 +74,54 @@ BASEPROMPT = "Write a paragraph about the hit game Among Us.\n\n"
 def bench(style, model_path):
     output_path = Path.cwd() / f"main-{style}"
     if not output_path.exists():
-        raise AssertionError("main file not found")
+        raise AssertionError(f"main file for style {style} not found")
 
-    if style == "clean":
+    if style in ("clean", "openblas", "mkl"):
         maxthreads = int(os.environ.get("MAXTHREADS", "16")) + 1
         log.info("running from 1 to %d threads ", maxthreads - 1)
 
         print(
             "threadcount,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second"
         )
+        system_info = None
         for thread_count in range(1, maxthreads):
-            sample_ms_per_token, prompt_eval_ms_per_token, eval_ms_per_token = (
-                run_model(output_path, model_path, ["-t", str(thread_count)])
+            timings, raw_info, given_system_info = run_model(
+                output_path, model_path, ["-t", str(thread_count)]
             )
-            tokens_sec = round(Decimal(1000) / eval_ms_per_token, 2)
+            if system_info is None:
+                system_info = given_system_info
+                print("# system info:", raw_info)
+            blas = system_info["BLAS"]
+            if style == "clean" and blas != "0":
+                raise AssertionError(f"clean bench wanted BLAS=0, got {blas}")
+            elif style in ("openblas", "mkl") and blas != "1":
+                raise AssertionError(f"openblas/mkl bench wanted BLAS=1, got {blas}")
+
+            tokens_sec = round(Decimal(1000) / timings.eval_ms_per_token, 2)
             print(
-                f"{thread_count},{sample_ms_per_token},{prompt_eval_ms_per_token},{eval_ms_per_token},{tokens_sec}"
+                f"{thread_count},{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
             )
+    else:
+        raise AssertionError(f"invalid style for bench: {style}")
+
+
+@dataclass
+class Timings:
+    sample_ms_per_token: Decimal
+    prompt_eval_ms_per_token: Decimal
+    eval_ms_per_token: Decimal
+
+
+def parse_system_info(raw: str) -> dict:
+    info = {}
+    for entry in raw.split("|"):
+        if not entry.strip():
+            continue
+        key, value = entry.split("=")
+        key = key.strip()
+        value = value.strip()
+        info[key] = value
+    return info
 
 
 def run_model(output_path, model_path, llamacpp_args):
@@ -115,7 +151,12 @@ def run_model(output_path, model_path, llamacpp_args):
     prompt_eval_ms_per_token = Decimal(prompt_eval_time_match.group(2))
     eval_time_match = re.search(EVAL_TIME_REGEX, text)
     eval_ms_per_token = Decimal(eval_time_match.group(2))
-    return sample_ms_per_token, prompt_eval_ms_per_token, eval_ms_per_token
+    system_info = re.search(r"system_info: (.*)", text).group(1)
+    return (
+        Timings(sample_ms_per_token, prompt_eval_ms_per_token, eval_ms_per_token),
+        system_info,
+        parse_system_info(system_info),
+    )
 
 
 def main():
@@ -160,6 +201,8 @@ def main():
     log.info("MAKEFLAGS=%s", makeflags)
 
     # build normally
+    build(llamacpp_path, makeflags, "openblas")
+    bench("openblas", model_path)
     build(llamacpp_path, makeflags, "clean")
     bench("clean", model_path)
 
