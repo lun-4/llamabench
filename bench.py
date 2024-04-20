@@ -1,5 +1,6 @@
 import os
 import re
+import socket
 import sys
 import logging
 import shutil
@@ -101,8 +102,9 @@ def bench(style, model_path):
         raise AssertionError(f"openblas/mkl bench wanted BLAS=1, got {blas}")
 
     print(
-        "config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second"
+        "hostname,config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second"
     )
+    hostname = socket.gethostname()
 
     maxthreads = int(os.environ.get("MAXTHREADS", "16")) + 1
     if (maxthreads - 1) > total_threads:
@@ -125,7 +127,7 @@ def bench(style, model_path):
 
             tokens_sec = round(Decimal(1000) / timings.eval_ms_per_token, 2)
             print(
-                f"cpu ({modifier}-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
+                f"{hostname},cpu ({modifier}-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
             )
     elif style == "vulkan":
         gpulayers = system_info["GPULAYERS"]
@@ -163,7 +165,7 @@ def bench(style, model_path):
 
                 tokens_sec = round(Decimal(1000) / timings.eval_ms_per_token, 2)
                 print(
-                    f"gpu (-t {thread_count}, -ngl {gpu_layers}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
+                    f"{hostname},gpu (-t {thread_count}, -ngl {gpu_layers}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
                 )
 
     else:
