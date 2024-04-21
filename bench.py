@@ -83,10 +83,12 @@ def bench(style, model_path):
         raise AssertionError(f"main file for style {style} not found")
 
     print(f"# === BENCHMARKING IN STYLE {style} ===")
-    if os.environ.get("DEBUG", "1"):
+    if os.environ.get("DEBUG", "0") == "1":
         print(
             "# WARNING: RUNNING IN DEBUG MODE. DO NOT CONSIDER THIS DATA AS VALID FOR PUBLISHING."
         )
+    else:
+        print("# not running in debug mode. data should be safe")
 
     system_info = None
     log.info("running probe...")
@@ -221,7 +223,7 @@ def parse_system_info(raw: str) -> dict:
 
 
 def run_model(output_path, model_path, llamacpp_args, *, tokens=None, vulkan=False):
-    if os.environ.get("DEBUG", "1"):
+    if os.environ.get("DEBUG", "0") == "1":
         tokens = tokens or 5
     else:
         tokens = tokens or 128
