@@ -394,10 +394,10 @@ def main():
         if not shutil.which("vulkaninfo"):
             raise Exception("VULKAN=1 but vulkaninfo not found")
 
-    log.info("LLAMACPP=%s", llamacpp_path)
-    log.info("MODEL=%s", model_path)
-    log.info("MAKEFLAGS=%s", makeflags)
-    log.info("hostname=%r", socket.gethostname())
+    print(f"# LLAMACPP={llamacpp_path}")
+    print(f"# MODEL={model_path}")
+    print(f"# MAKEFLAGS={makeflags}")
+    print(f"# hostname={socket.gethostname()}")
 
     build(llamacpp_path, makeflags, "clean")
     bench("clean", model_path)
