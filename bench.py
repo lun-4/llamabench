@@ -226,6 +226,8 @@ def run_model(output_path, model_path, llamacpp_args, *, tokens=None, vulkan=Fal
     eval_time_match = re.search(EVAL_TIME_REGEX, text)
     eval_ms_per_token = Decimal(eval_time_match.group(2))
     system_info = re.search(r"system_info: (.*)", text).group(1)
+    gcc_version = re.search(r"main: built (.*)", text).group(1)
+    system_info += "| CC = " + gcc_version
     if vulkan:
         system_info += " | VULKAN0 = " + (
             re.search(r"Vulkan0: (.*)", text).group(1).replace("|", ",")
