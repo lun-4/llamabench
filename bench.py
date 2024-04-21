@@ -121,7 +121,7 @@ def bench(style, model_path):
             maxthreads - 1,
         )
 
-    max_thermal_throttle = 4
+    max_thermal_throttle = 4 if not is_debug() else 0
     for idx in range(max_thermal_throttle):
         log.info(
             "running with maximum threads to incur thermal throttling, please wait... (run %d/%d)",
