@@ -328,6 +328,7 @@ def main():
             "scaling governor for %s is %s (should be performance)", cpu_path, governor
         )
 
+    # tricks by https://justine.lol/matmul/
     log.info(
         "if governors are not performance, prefer to run `echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor`"
     )
