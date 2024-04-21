@@ -137,7 +137,7 @@ def bench(style, model_path):
         )
 
     print(
-        "hostname,config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second,stddev_tokens_per_second"
+        "hostname,config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,samples_tokens_per_second,avg_tokens_per_second,stddev_tokens_per_second"
     )
     hostname = socket.gethostname()
 
@@ -153,7 +153,7 @@ def bench(style, model_path):
                 modifier = f"{style}, "
 
             print(
-                f"{hostname},cpu ({modifier}-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec},{stddev_tokens_sec}"
+                f"{hostname},cpu ({modifier}-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{samples},{tokens_sec},{stddev_tokens_sec}"
             )
     elif style == "vulkan":
         if "VULKAN0" not in system_info:
@@ -187,16 +187,21 @@ def bench(style, model_path):
             )
 
             for thread_count in range(1, maxthreads):
-                timings, tokens_sec, stddev_tokens_sec, raw_info, given_system_info = (
-                    bench_model(
-                        output_path,
-                        model_path,
-                        ["-t", str(thread_count), "-ngl", str(gpu_layers)],
-                    )
+                (
+                    timings,
+                    samples,
+                    tokens_sec,
+                    stddev_tokens_sec,
+                    raw_info,
+                    given_system_info,
+                ) = bench_model(
+                    output_path,
+                    model_path,
+                    ["-t", str(thread_count), "-ngl", str(gpu_layers)],
                 )
 
                 print(
-                    f"{hostname},gpu (-t {thread_count}, -ngl {gpu_layers}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec},{stddev_tokens_sec}"
+                    f"{hostname},gpu (-t {thread_count}, -ngl {gpu_layers}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{samples},{tokens_sec},{stddev_tokens_sec}"
                 )
 
     else:
@@ -299,7 +304,7 @@ def bench_model(
 
     mean = average(samples)
     stddev = standard_deviation(samples)
-    return new_timings, mean, stddev, info, sysinfo
+    return new_timings, "|".join(str(s) for s in samples), mean, stddev, info, sysinfo
 
 
 def main():
