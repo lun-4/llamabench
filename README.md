@@ -38,7 +38,8 @@ mv 'Meta-Llama-3-8B-Instruct-Q4_K_M.gguf?download=true' 'Meta-Llama-3-8B-Instruc
 # actually run the bench
 # set MAXTHREADS to amount of threads in yr system
 # llamabench will rebuild llama.cpp using make to provide isolation
-env MAXTHREADS=12 MAKEFLAGS=-j8 LLAMACPP=/path/to/directory/llama.cpp MODEL=/path/to/model/file/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf python3 ./bench.py
+# VULKAN=1 ONLY IF YOU HAVE A VULKAN-CAPABLE DEVICE AND LIBRARIES
+env VULKAN=1 MAXTHREADS=12 MAKEFLAGS=-j8 LLAMACPP=/path/to/directory/llama.cpp MODEL=/path/to/model/file/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf python3 ./bench.py
 
 # a lot of data is spit out to stdout/stderr, capture everything to a file
 ```
