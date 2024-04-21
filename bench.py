@@ -83,7 +83,7 @@ def bench(style, model_path):
         raise AssertionError(f"main file for style {style} not found")
 
     print(f"# === BENCHMARKING IN STYLE {style} ===")
-    if os.environ.get("DEBUG", "0") == "1":
+    if is_debug():
         print(
             "# WARNING: RUNNING IN DEBUG MODE. DO NOT CONSIDER THIS DATA AS VALID FOR PUBLISHING."
         )
@@ -222,8 +222,12 @@ def parse_system_info(raw: str) -> dict:
     return info
 
 
+def is_debug():
+    return os.environ.get("DEBUG", "0") == "1"
+
+
 def run_model(output_path, model_path, llamacpp_args, *, tokens=None, vulkan=False):
-    if os.environ.get("DEBUG", "0") == "1":
+    if is_debug():
         tokens = tokens or 5
     else:
         tokens = tokens or 128
@@ -315,6 +319,18 @@ def main():
         raise Exception(
             "LLAMACPP is not set to a directory. must be llama.cpp source dir"
         )
+
+    for cpu_path in Path("/sys/devices/system/cpu").glob(
+        "cpu*/cpufreq/scaling_governor"
+    ):
+        governor = cpu_path.read_text().strip()
+        log.info(
+            "scaling governor for %s is %s (should be performance)", cpu_path, governor
+        )
+
+    log.info(
+        "if governors are not performance, prefer to run `echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor`"
+    )
 
     try:
         model_path = Path(os.environ["MODEL"])
