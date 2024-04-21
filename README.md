@@ -30,9 +30,7 @@ git clone https://github.com/lun-4/llamabench
 cd llamabench
 
 # using this model for benches
-wget 'https://huggingface.co/NousResearch/Meta-Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf?download=true'
-# not required but prettier names = more aesthetic
-mv 'Meta-Llama-3-8B-Instruct-Q4_K_M.gguf?download=true' 'Meta-Llama-3-8B-Instruct-Q4_K_M.gguf'
+wget 'https://huggingface.co/NousResearch/Meta-Llama-3-8B-Instruct-GGUF/resolve/main/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf?download=true' -O 'Meta-Llama-3-8B-Instruct-Q4_K_M.gguf'
 
 # prepare system
 echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
