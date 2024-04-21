@@ -81,7 +81,7 @@ def bench(style, model_path):
     if not output_path.exists():
         raise AssertionError(f"main file for style {style} not found")
 
-    print(f" === BENCHMARKING IN STYLE {style} ===")
+    print(f"# === BENCHMARKING IN STYLE {style} ===")
 
     system_info = None
     log.info("running probe...")
@@ -106,11 +106,6 @@ def bench(style, model_path):
     elif style in ("openblas", "mkl") and blas != "1":
         raise AssertionError(f"openblas/mkl bench wanted BLAS=1, got {blas}")
 
-    print(
-        "hostname,config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second"
-    )
-    hostname = socket.gethostname()
-
     maxthreads = int(os.environ.get("MAXTHREADS", "16")) + 1
     if (maxthreads - 1) > total_threads:
         log.warning(
@@ -118,6 +113,24 @@ def bench(style, model_path):
             total_threads,
             maxthreads - 1,
         )
+
+    for idx in range(3):
+        log.info(
+            "running with maximum threads to incur thermal throttling, please wait... (run %d/3)",
+            idx + 1,
+        )
+        timings, raw_info, given_system_info = run_model(
+            output_path,
+            model_path,
+            ["-t", str(maxthreads)],
+            tokens=128,
+            vulkan=style == "vulkan",
+        )
+
+    print(
+        "hostname,config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second"
+    )
+    hostname = socket.gethostname()
 
     if style in ("clean", "openblas", "mkl"):
         log.info("running from 1 to %d threads only", maxthreads - 1)
