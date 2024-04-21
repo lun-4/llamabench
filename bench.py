@@ -254,7 +254,7 @@ def is_debug():
 
 def run_model(output_path, model_path, llamacpp_args, *, tokens=None, vulkan=False):
     if is_debug():
-        tokens = tokens or 5
+        tokens = tokens or 2
     else:
         tokens = tokens or 128
     tokens = str(tokens)
