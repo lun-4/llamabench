@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import socket
 import sys
 import logging
@@ -137,15 +138,25 @@ def bench(style, model_path):
         )
 
     print(
-        "hostname,config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,samples_tokens_per_second,avg_tokens_per_second,stddev_tokens_per_second"
+        "\t".join(
+            [
+                "hostname",
+                "config",
+                "raw_timing_data",
+                "average_tokens_per_second",
+                "stddev_tokens_per_second",
+            ]
+        )
     )
     hostname = socket.gethostname()
 
     if style in ("clean", "openblas", "mkl"):
         log.info("running from 1 to %d threads only", maxthreads - 1)
         for thread_count in range(1, maxthreads):
-            timings, tokens_sec, stddev_tokens_sec, raw_info, given_system_info = (
-                bench_model(output_path, model_path, ["-t", str(thread_count)])
+            data, mean, stddev = bench_model(
+                output_path,
+                model_path,
+                ["-t", str(thread_count)],
             )
 
             modifier = ""
@@ -153,8 +164,17 @@ def bench(style, model_path):
                 modifier = f"{style}, "
 
             print(
-                f"{hostname},cpu ({modifier}-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{samples},{tokens_sec},{stddev_tokens_sec}"
+                "\t".join(
+                    [
+                        hostname,
+                        f"cpu ({modifier}-t {thread_count})",
+                        data,
+                        str(mean),
+                        str(stddev),
+                    ]
+                )
             )
+
     elif style == "vulkan":
         if "VULKAN0" not in system_info:
             raise AsssertionError(
@@ -187,21 +207,22 @@ def bench(style, model_path):
             )
 
             for thread_count in range(1, maxthreads):
-                (
-                    timings,
-                    samples,
-                    tokens_sec,
-                    stddev_tokens_sec,
-                    raw_info,
-                    given_system_info,
-                ) = bench_model(
+                data, mean, stddev = bench_model(
                     output_path,
                     model_path,
                     ["-t", str(thread_count), "-ngl", str(gpu_layers)],
                 )
 
                 print(
-                    f"{hostname},gpu (-t {thread_count}, -ngl {gpu_layers}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{samples},{tokens_sec},{stddev_tokens_sec}"
+                    "\t".join(
+                        [
+                            hostname,
+                            f"gpu (-t {thread_count}, -ngl {gpu_layers})",
+                            data,
+                            str(mean),
+                            str(stddev),
+                        ]
+                    )
                 )
 
     else:
@@ -287,24 +308,40 @@ def average(samples: List[Decimal]) -> Decimal:
 def standard_deviation(samples: List[Decimal]) -> Decimal:
     mean = average(samples)
     variance = sum((x - mean) ** 2 for x in samples) / len(samples)
-    return variance**0.5
+    return variance ** Decimal("0.5")
 
 
 def bench_model(
     output_path, model_path, args, *, tokens=None, vulkan: bool = False
 ) -> tuple[Timings, str, dict]:
-    tokens = tokens or 128
-    samples = []
+    timings: List[Timings] = []
     for _ in range(5):
-        timings, info, sysinfo = run_model(
+        single_timings, _, _ = run_model(
             output_path, model_path, args, tokens=tokens, vulkan=vulkan
         )
-        sample_tokens_sec = round(Decimal(1000) / timings.eval_ms_per_token, 2)
+        timings.append(single_timings)
+
+    samples = []
+    for timing in timings:
+        sample_tokens_sec = round(Decimal(1000) / timing.eval_ms_per_token, 2)
         samples.append(sample_tokens_sec)
 
     mean = average(samples)
     stddev = standard_deviation(samples)
-    return new_timings, "|".join(str(s) for s in samples), mean, stddev, info, sysinfo
+    return [
+        json.dumps(
+            [
+                [
+                    str(round(t.sample_ms_per_token, 4)),
+                    str(round(t.prompt_eval_ms_per_token, 4)),
+                    str(round(t.eval_ms_per_token, 4)),
+                ]
+                for t in timings
+            ]
+        ),
+        round(mean, 4),
+        round(stddev, 4),
+    ]
 
 
 def main():
