@@ -34,6 +34,8 @@ wget 'https://huggingface.co/NousResearch/Meta-Llama-3-8B-Instruct-GGUF/resolve/
 # not required but prettier names = more aesthetic
 mv 'Meta-Llama-3-8B-Instruct-Q4_K_M.gguf?download=true' 'Meta-Llama-3-8B-Instruct-Q4_K_M.gguf'
 
+# prepare system
+echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 
 # actually run the bench
 # set MAXTHREADS to amount of threads in yr system
