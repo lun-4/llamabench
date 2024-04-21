@@ -135,6 +135,10 @@ def bench(style, model_path):
                 f"{hostname},cpu ({modifier}-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
             )
     elif style == "vulkan":
+        if "VULKAN0" not in system_info:
+            raise AsssertionError(
+                "no VULKAN0 found even though mode is vulkan... is there an actually available gpu?"
+            )
         gpulayers = system_info["GPULAYERS"]
         _, max_gpu_layers = gpulayers.split("/")
         max_gpu_layers = int(max_gpu_layers.strip())
