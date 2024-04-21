@@ -6,6 +6,7 @@ import logging
 import shutil
 import shlex
 import subprocess
+from typing import List
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -118,38 +119,39 @@ def bench(style, model_path):
             maxthreads - 1,
         )
 
-    for idx in range(3):
+    max_thermal_throttle = 4
+    for idx in range(max_thermal_throttle):
         log.info(
-            "running with maximum threads to incur thermal throttling, please wait... (run %d/3)",
+            "running with maximum threads to incur thermal throttling, please wait... (run %d/%d)",
             idx + 1,
+            max_thermal_throttle,
         )
         timings, raw_info, given_system_info = run_model(
             output_path,
             model_path,
-            ["-t", str(maxthreads)],
-            tokens=128,
+            ["-t", str(maxthreads - 2)],
+            tokens=64,
             vulkan=style == "vulkan",
         )
 
     print(
-        "hostname,config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second"
+        "hostname,config,sample_ms_per_token,prompt_eval_ms_per_token,eval_ms_per_token,tokens_per_second,stddev_tokens_per_second"
     )
     hostname = socket.gethostname()
 
     if style in ("clean", "openblas", "mkl"):
         log.info("running from 1 to %d threads only", maxthreads - 1)
         for thread_count in range(1, maxthreads):
-            timings, raw_info, given_system_info = run_model(
-                output_path, model_path, ["-t", str(thread_count)]
+            timings, tokens_sec, stddev_tokens_sec, raw_info, given_system_info = (
+                bench_model(output_path, model_path, ["-t", str(thread_count)])
             )
 
             modifier = ""
             if style in ("openblas", "mkl"):
                 modifier = f"{style}, "
 
-            tokens_sec = round(Decimal(1000) / timings.eval_ms_per_token, 2)
             print(
-                f"{hostname},cpu ({modifier}-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
+                f"{hostname},cpu ({modifier}-t {thread_count}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec},{stddev_tokens_sec}"
             )
     elif style == "vulkan":
         if "VULKAN0" not in system_info:
@@ -183,15 +185,16 @@ def bench(style, model_path):
             )
 
             for thread_count in range(1, maxthreads):
-                timings, raw_info, given_system_info = run_model(
-                    output_path,
-                    model_path,
-                    ["-t", str(thread_count), "-ngl", str(gpu_layers)],
+                timings, tokens_sec, stddev_tokens_sec, raw_info, given_system_info = (
+                    bench_model(
+                        output_path,
+                        model_path,
+                        ["-t", str(thread_count), "-ngl", str(gpu_layers)],
+                    )
                 )
 
-                tokens_sec = round(Decimal(1000) / timings.eval_ms_per_token, 2)
                 print(
-                    f"{hostname},gpu (-t {thread_count}, -ngl {gpu_layers}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec}"
+                    f"{hostname},gpu (-t {thread_count}, -ngl {gpu_layers}),{timings.sample_ms_per_token},{timings.prompt_eval_ms_per_token},{timings.eval_ms_per_token},{tokens_sec},{stddev_tokens_sec}"
                 )
 
     else:
@@ -264,6 +267,33 @@ def run_model(output_path, model_path, llamacpp_args, *, tokens=None, vulkan=Fal
         system_info,
         parse_system_info(system_info),
     )
+
+
+def average(samples: List[Decimal]) -> Decimal:
+    return sum(samples) / len(samples)
+
+
+def standard_deviation(samples: List[Decimal]) -> Decimal:
+    mean = average(samples)
+    variance = sum((x - mean) ** 2 for x in samples) / len(samples)
+    return variance**0.5
+
+
+def bench_model(
+    output_path, model_path, args, *, tokens=None, vulkan: bool = False
+) -> tuple[Timings, str, dict]:
+    tokens = tokens or 128
+    samples = []
+    for _ in range(5):
+        timings, info, sysinfo = run_model(
+            output_path, model_path, args, tokens=tokens, vulkan=vulkan
+        )
+        sample_tokens_sec = round(Decimal(1000) / timings.eval_ms_per_token, 2)
+        samples.append(sample_tokens_sec)
+
+    mean = average(samples)
+    stddev = standard_deviation(samples)
+    return new_timings, mean, stddev, info, sysinfo
 
 
 def main():
