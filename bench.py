@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import hashlib
 import socket
 import sys
 import logging
@@ -398,6 +399,14 @@ def main():
     print(f"# MODEL={model_path}")
     print(f"# MAKEFLAGS={makeflags}")
     print(f"# hostname={socket.gethostname()}")
+
+    log.info("computing model md5...")
+
+    hash_md5 = hashlib.md5()
+    with model_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(64 * 1024), b""):
+            hash_md5.update(chunk)
+    print("# MODEL HASH", hash_md5.hexdigest())
 
     build(llamacpp_path, makeflags, "clean")
     bench("clean", model_path)
