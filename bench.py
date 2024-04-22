@@ -79,7 +79,7 @@ def build(llamacpp_path: Path, makeflags: str, style) -> None:
 BASEPROMPT = "Write a paragraph about the hit game Among Us.\n\n"
 
 
-def range_include_last_value(from_n, to, step):
+def range_include_last_value(from_n, to, step=1):
     vals = list(range(from_n, to, step))
     if to not in vals:
         vals.append(to)
@@ -127,8 +127,12 @@ def bench(style, model_path):
         log.warning(
             "system has %d threads but MAXTHREADS is %d, likely decrease it...",
             total_threads,
-            maxthreads - 1,
+            maxthreads,
         )
+
+    log.warning(
+        "keep in mind maxthreads is bumped by 1 automatically to incur worst-case performance..."
+    )
 
     max_thermal_throttle = 4 if not is_debug() else 0
     for idx in range(max_thermal_throttle):
@@ -159,8 +163,8 @@ def bench(style, model_path):
     hostname = socket.gethostname()
 
     if style in ("clean", "openblas", "mkl"):
-        log.info("running from 1 to %d threads only", maxthreads - 1)
-        for thread_count in range(1, maxthreads):
+        log.info("running from 1 to %d threads only", maxthreads)
+        for thread_count in range_include_last_value(1, maxthreads):
             data, mean, stddev = bench_model(
                 output_path,
                 model_path,
