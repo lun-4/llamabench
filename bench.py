@@ -1,5 +1,6 @@
 import os
 import re
+import datetime
 import json
 import hashlib
 import socket
@@ -362,6 +363,7 @@ def bench_model(
 
 
 def main():
+    print("start", datetime.datetime.utcnow())
     if not shutil.which("make"):
         raise Exception("requires make")
 
@@ -437,6 +439,7 @@ def main():
     if can_vulkan:
         build(llamacpp_path, makeflags, "vulkan")
         bench("vulkan", model_path)
+    print("end", datetime.datetime.now(datetime.UTC))
 
 
 if __name__ == "__main__":
