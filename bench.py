@@ -204,13 +204,20 @@ def bench(style, model_path):
         for gpu_layers in range(
             0, max_gpu_layers + gpu_layer_step_count, gpu_layer_step_count
         ):
+            threadstep = 5
             log.info(
-                "vulkan bench, running from -t 1 to -t %d for -ngl %d",
+                "vulkan bench, running from -t 1 to -t %d (step %d) for -ngl %d",
                 maxthreads,
+                threadstep,
                 gpu_layers,
             )
 
-            for thread_count in range(1, maxthreads):
+            for thread_count in range(1, maxthreads + threadstep, threadstep):
+                should_stop = False
+                if thread_count > maxthreads:
+                    thread_count = maxthreads
+                    should_stop = True
+
                 data, mean, stddev = bench_model(
                     output_path,
                     model_path,
@@ -228,6 +235,10 @@ def bench(style, model_path):
                         ]
                     )
                 )
+
+                if should_stop:
+                    log.info("reached max threads for this -ngl, moving on...")
+                    break
 
     else:
         raise AssertionError(f"invalid style for bench: {style}")
