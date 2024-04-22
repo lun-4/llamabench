@@ -422,10 +422,16 @@ def main():
             hash_md5.update(chunk)
     print("# MODEL HASH", hash_md5.hexdigest())
 
-    build(llamacpp_path, makeflags, "clean")
-    bench("clean", model_path)
-    build(llamacpp_path, makeflags, "openblas")
-    bench("openblas", model_path)
+    maybe_skip = os.environ.get("SKIP", "")
+
+    skips = maybe_skip.split(",")
+
+    if "clean" not in skip:
+        build(llamacpp_path, makeflags, "clean")
+        bench("clean", model_path)
+    if "openblas" not in skip:
+        build(llamacpp_path, makeflags, "openblas")
+        bench("openblas", model_path)
     if can_vulkan:
         build(llamacpp_path, makeflags, "vulkan")
         bench("vulkan", model_path)
