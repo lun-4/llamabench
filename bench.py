@@ -426,10 +426,10 @@ def main():
 
     skips = maybe_skip.split(",")
 
-    if "clean" not in skip:
+    if "clean" not in skips:
         build(llamacpp_path, makeflags, "clean")
         bench("clean", model_path)
-    if "openblas" not in skip:
+    if "openblas" not in skips:
         build(llamacpp_path, makeflags, "openblas")
         bench("openblas", model_path)
     if can_vulkan:
