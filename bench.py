@@ -79,6 +79,13 @@ def build(llamacpp_path: Path, makeflags: str, style) -> None:
 BASEPROMPT = "Write a paragraph about the hit game Among Us.\n\n"
 
 
+def range_include_last_value(from_n, to, step):
+    vals = list(range(from_n, to, step))
+    if to not in vals:
+        vals.append(to)
+    return vals
+
+
 def bench(style, model_path):
     output_path = Path.cwd() / f"main-{style}"
     if not output_path.exists():
@@ -190,7 +197,7 @@ def bench(style, model_path):
         try:
             gpu_layer_step_count = int(os.environ["GPU_LAYER_STEP_COUNT"])
         except KeyError:
-            gpu_layer_step_count = 8
+            gpu_layer_step_count = 10
             log.warning(
                 "GPU_LAYER_STEP_COUNT not set, defaulting to %d", gpu_layer_step_count
             )
@@ -201,8 +208,8 @@ def bench(style, model_path):
             gpu_layer_step_count,
         )
         # go a step over so that we actually get max_gpu_layers instead of max_gpu_layers-1
-        for gpu_layers in range(
-            0, max_gpu_layers + gpu_layer_step_count, gpu_layer_step_count
+        for gpu_layers in range_include_last_value(
+            0, max_gpu_layers, gpu_layer_step_count
         ):
             threadstep = 5
             log.info(
@@ -212,12 +219,7 @@ def bench(style, model_path):
                 gpu_layers,
             )
 
-            for thread_count in range(1, maxthreads + threadstep, threadstep):
-                should_stop = False
-                if thread_count > maxthreads:
-                    thread_count = maxthreads
-                    should_stop = True
-
+            for thread_count in range_include_last_value(1, maxthreads, threadstep):
                 data, mean, stddev = bench_model(
                     output_path,
                     model_path,
@@ -235,10 +237,6 @@ def bench(style, model_path):
                         ]
                     )
                 )
-
-                if should_stop:
-                    log.info("reached max threads for this -ngl, moving on...")
-                    break
 
     else:
         raise AssertionError(f"invalid style for bench: {style}")
