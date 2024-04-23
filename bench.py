@@ -90,6 +90,7 @@ def range_include_last_value(from_n, to, step=1):
 def print_output(*args):
     with Path("./benchdata.csv").open("a") as fd:
         print(*args, file=fd)
+    print(*args)
 
 
 def bench(style, model_path):
