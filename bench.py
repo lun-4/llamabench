@@ -87,18 +87,23 @@ def range_include_last_value(from_n, to, step=1):
     return vals
 
 
+def print_output(*args):
+    with Path("./benchdata.csv").open("a") as fd:
+        print(*args, file=fd)
+
+
 def bench(style, model_path):
     output_path = Path.cwd() / f"main-{style}"
     if not output_path.exists():
         raise AssertionError(f"main file for style {style} not found")
 
-    print(f"# === BENCHMARKING IN STYLE {style} ===")
+    print_output(f"# === BENCHMARKING IN STYLE {style} ===")
     if is_debug():
-        print(
+        print_output(
             "# WARNING: RUNNING IN DEBUG MODE. DO NOT CONSIDER THIS DATA AS VALID FOR PUBLISHING."
         )
     else:
-        print("# not running in debug mode. data should be safe")
+        print_output("# not running in debug mode. data should be safe")
 
     system_info = None
     log.info("running probe...")
@@ -107,7 +112,7 @@ def bench(style, model_path):
     )
 
     system_info = given_system_info
-    print("# system info:", raw_info)
+    print_output("# system info:", raw_info)
     n_threads = system_info["n_threads"]
     _, total_threads = n_threads.split("/")
     total_threads = int(total_threads.strip())
@@ -116,7 +121,7 @@ def bench(style, model_path):
     with Path("/proc/cpuinfo").open() as cpuinfo_fd:
         cpuinfo = cpuinfo_fd.read()
         model_name = re.search(r"model name\s+:\s+(.*)", cpuinfo).group(1).strip()
-        print("# cpu model name:", model_name)
+        print_output("# cpu model name:", model_name)
     blas = system_info["BLAS"]
     if style == "clean" and blas != "0":
         raise AssertionError(f"clean bench wanted BLAS=0, got {blas}")
@@ -150,7 +155,7 @@ def bench(style, model_path):
             vulkan=style == "vulkan",
         )
 
-    print(
+    print_output(
         "\t".join(
             [
                 "hostname",
@@ -176,7 +181,7 @@ def bench(style, model_path):
             if style in ("openblas", "mkl"):
                 modifier = f"{style}, "
 
-            print(
+            print_output(
                 "\t".join(
                     [
                         hostname,
@@ -231,7 +236,7 @@ def bench(style, model_path):
                     ["-t", str(thread_count), "-ngl", str(gpu_layers)],
                 )
 
-                print(
+                print_output(
                     "\t".join(
                         [
                             hostname,
