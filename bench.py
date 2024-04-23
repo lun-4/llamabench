@@ -363,7 +363,7 @@ def bench_model(
 
 
 def main():
-    print("start", datetime.datetime.utcnow())
+    log.info("end %s", datetime.datetime.now(datetime.UTC))
     if not shutil.which("make"):
         raise Exception("requires make")
 
@@ -439,9 +439,15 @@ def main():
     if can_vulkan:
         build(llamacpp_path, makeflags, "vulkan")
         bench("vulkan", model_path)
-    print("end", datetime.datetime.now(datetime.UTC))
+    log.info("end %s", datetime.datetime.now(datetime.UTC))
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        handlers=[
+            logging.FileHandler("bench.log", encoding="utf-8"),
+            logging.StreamHandler(stream=sys.stderr),
+        ],
+    )
     main()
