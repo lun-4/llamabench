@@ -172,10 +172,14 @@ def bench(style, model_path):
     if style in ("clean", "openblas", "mkl"):
         log.info("running from 1 to %d threads only", maxthreads)
         for thread_count in range_include_last_value(1, maxthreads):
+            tokens = None
+            if thread_count > (maxthreads - 1):
+                tokens = 16
             data, mean, stddev = bench_model(
                 output_path,
                 model_path,
                 ["-t", str(thread_count)],
+                tokens=tokens,
             )
 
             modifier = ""
@@ -233,10 +237,15 @@ def bench(style, model_path):
             )
 
             for thread_count in range_include_last_value(1, maxthreads, threadstep):
+                tokens = None
+                if thread_count > (maxthreads - 1):
+                    tokens = 16
+
                 data, mean, stddev = bench_model(
                     output_path,
                     model_path,
                     ["-t", str(thread_count), "-ngl", str(gpu_layers)],
+                    tokens=tokens,
                 )
 
                 if style == "cuda":
@@ -346,7 +355,8 @@ def bench_model(
     output_path, model_path, args, *, tokens=None, vulkan: bool = False
 ) -> tuple[Timings, str, dict]:
     timings: List[Timings] = []
-    for _ in range(5):
+    runs = 5 if not is_debug() else 1
+    for _ in range(runs):
         single_timings, _, _ = run_model(
             output_path, model_path, args, tokens=tokens, vulkan=vulkan
         )
