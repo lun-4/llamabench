@@ -194,8 +194,8 @@ def bench(style, model_path):
                 )
             )
 
-    elif style == "vulkan":
-        if "VULKAN0" not in system_info:
+    elif style in ("vulkan", "cuda"):
+        if style == "vulkan" and "VULKAN0" not in system_info:
             raise AsssertionError(
                 "no VULKAN0 found even though mode is vulkan... is there an actually available gpu?"
             )
@@ -214,7 +214,8 @@ def bench(style, model_path):
             )
 
         log.info(
-            "vulkan bench, running from -ngl 0 to -ngl %d (with step count = %d)",
+            "%s bench, running from -ngl 0 to -ngl %d (with step count = %d)",
+            style,
             max_gpu_layers,
             gpu_layer_step_count,
         )
@@ -224,7 +225,8 @@ def bench(style, model_path):
         ):
             threadstep = 5
             log.info(
-                "vulkan bench, running from -t 1 to -t %d (step %d) for -ngl %d",
+                "%s bench, running from -t 1 to -t %d (step %d) for -ngl %d",
+                style,
                 maxthreads,
                 threadstep,
                 gpu_layers,
@@ -237,11 +239,16 @@ def bench(style, model_path):
                     ["-t", str(thread_count), "-ngl", str(gpu_layers)],
                 )
 
+                if style == "cuda":
+                    maybe_style = "cuda, "
+                else:
+                    maybe_style = ""
+
                 print_output(
                     "\t".join(
                         [
                             hostname,
-                            f"gpu (-t {thread_count}, -ngl {gpu_layers})",
+                            f"gpu ({maybe_style}-t {thread_count}, -ngl {gpu_layers})",
                             data,
                             str(mean),
                             str(stddev),
@@ -411,6 +418,7 @@ def main():
         raise Exception("MODEL is not set to a file")
 
     can_vulkan = os.environ.get("VULKAN", "0") == "1"
+    can_cuda = os.environ.get("CUDA", "0") == "1"
 
     if can_vulkan:
         # verify header
@@ -445,6 +453,8 @@ def main():
     if can_vulkan:
         build(llamacpp_path, makeflags, "vulkan")
         bench("vulkan", model_path)
+    if can_cuda:
+        bench("cuda", model_path)
     log.info("end %s", datetime.datetime.now(datetime.UTC))
 
 
