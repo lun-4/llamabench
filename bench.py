@@ -109,7 +109,12 @@ def bench(style, model_path):
     system_info = None
     log.info("running probe...")
     timings, raw_info, given_system_info = run_model(
-        output_path, model_path, ["-t", "1"], tokens=1, vulkan=style == "vulkan"
+        output_path,
+        model_path,
+        ["-t", "1"],
+        tokens=1,
+        vulkan=style == "vulkan",
+        cuda=style == "cuda",
     )
 
     system_info = given_system_info
@@ -292,7 +297,9 @@ def is_debug():
     return os.environ.get("DEBUG", "0") == "1"
 
 
-def run_model(output_path, model_path, llamacpp_args, *, tokens=None, vulkan=False):
+def run_model(
+    output_path, model_path, llamacpp_args, *, tokens=None, vulkan=False, cuda=False
+):
     if is_debug():
         tokens = tokens or 2
     else:
@@ -327,10 +334,15 @@ def run_model(output_path, model_path, llamacpp_args, *, tokens=None, vulkan=Fal
     system_info = re.search(r"system_info: (.*)", text).group(1)
     gcc_version = re.search(r"main: built (.*)", text).group(1)
     system_info += "| CC = " + gcc_version
+    if cuda:
+        system_info += " | VULKAN0 = " + (
+            re.search(r"  Device 0: (.*)", text).group(1).replace("|", ",")
+        )
     if vulkan:
         system_info += " | VULKAN0 = " + (
             re.search(r"Vulkan0: (.*)", text).group(1).replace("|", ",")
         )
+    if vulkan or cuda:
         system_info += " | GPULAYERS = " + re.search(
             r"llm_load_tensors: offloaded (.*) layers to GPU", text
         ).group(1)
