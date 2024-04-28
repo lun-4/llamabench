@@ -27,6 +27,8 @@ class CommentIgnorer:
         return line
 
 
+data = defaultdict(lambda: defaultdict(list))
+
 for path in Path(BASEPATH).glob("*.csv"):
     with path.open("r") as fd:
         print(path)
@@ -62,26 +64,51 @@ for path in Path(BASEPATH).glob("*.csv"):
                 thread_count = int(splitted_config[3].rstrip(","))
                 ngl_count = int(splitted_config[5].rstrip(")"))
 
-            if row_mode != MODE:
-                continue
-
             avg_tokens_per_second = float(avg_tokens_per_second)
             stddev_tokens_per_second = float(stddev_tokens_per_second)
-            actors_data[hostname].append((thread_count, avg_tokens_per_second))
+            data[row_mode][hostname].append((thread_count, avg_tokens_per_second))
 
 
-pprint.pprint(actors_data)
-# Plot each actor's data
-for actor, data in actors_data.items():
-    x_values = [item[0] for item in data]
-    y_values = [item[1] for item in data]
-    plt.plot(x_values, y_values, label=actor)
+pprint.pprint(data)
 
-# Add labels and title
-plt.xlabel("thread count")
-plt.ylabel("tokens per second")
 if MODE == "cpu":
+    # plot all clean data
+    for actor, actor_data in data["cpu"].items():
+        x_values = [item[0] for item in actor_data]
+        y_values = [item[1] for item in actor_data]
+        plt.plot(x_values, y_values, label=actor)
+    plt.xlabel("thread count")
+    plt.ylabel("tokens per second")
     plt.title("benchmark style=clean")
+elif MODE == "openblas":
+    # find the delta between a thread count made on 'cpu' mode vs 'openblas' mode
+    # requires reformatting the data as dicts so its easy to find the delta
+    clean_data = defaultdict(dict)
+    openblas_data = defaultdict(dict)
+
+    for actor, actor_data in data["openblas"].items():
+        for x, y in actor_data:
+            openblas_data[actor][x] = y
+
+    for actor, actor_data in data["cpu"].items():
+        for x, y in actor_data:
+            clean_data[actor][x] = y
+
+    for actor in openblas_data.keys():
+        x_values = []
+        y_values = []
+        for threadcount in sorted(openblas_data[actor].keys()):
+            print(actor)
+            print(openblas_data[actor])
+            print(clean_data[actor])
+            delta = openblas_data[actor][threadcount] - clean_data[actor][threadcount]
+            x_values.append(threadcount)
+            y_values.append(delta)
+        plt.plot(x_values, y_values, label=actor)
+    plt.xlabel("thread count")
+    plt.ylabel("delta tokens per second")
+    plt.title("speed gained or lost by going to openblas")
+
 else:
     raise Exception("TODO")
 
