@@ -66,7 +66,20 @@ for path in Path(BASEPATH).glob("*.csv"):
 
             avg_tokens_per_second = float(avg_tokens_per_second)
             stddev_tokens_per_second = float(stddev_tokens_per_second)
-            data[row_mode][hostname].append((thread_count, avg_tokens_per_second))
+            if row_mode in ("vulkan", "cuda"):
+                ok = True
+                # manual filtering lol
+                if hostname == "elpis":
+                    ok = False
+                    if thread_count in (1, 6, 11, 12) and ngl_count in (0, 12, 20, 32):
+                        ok = True
+
+                if ok:
+                    data[row_mode][hostname].append(
+                        ((thread_count, ngl_count), avg_tokens_per_second)
+                    )
+            else:
+                data[row_mode][hostname].append((thread_count, avg_tokens_per_second))
 
 
 pprint.pprint(data)
@@ -98,9 +111,6 @@ elif MODE == "openblas":
         x_values = []
         y_values = []
         for threadcount in sorted(openblas_data[actor].keys()):
-            print(actor)
-            print(openblas_data[actor])
-            print(clean_data[actor])
             delta = openblas_data[actor][threadcount] - clean_data[actor][threadcount]
             x_values.append(threadcount)
             y_values.append(delta)
@@ -108,7 +118,22 @@ elif MODE == "openblas":
     plt.xlabel("thread count")
     plt.ylabel("delta tokens per second")
     plt.title("speed gained or lost by going to openblas")
+elif MODE == "vulkan":
+    fig = plt.figure()
+    ax = plt.axes(projection="3d")
 
+    # Data for a three-dimensional line
+
+    for actor, actor_data in data["vulkan"].items():
+        x_values = [item[0][0] for item in actor_data]
+        y_values = [item[0][1] for item in actor_data]
+        z_values = [item[1] for item in actor_data]
+        ax.scatter3D(x_values, y_values, z_values, label=actor)
+
+    ax.set_xlabel("threads")
+    ax.set_ylabel("gpu layers")
+    ax.set_zlabel("tokens/second")
+    plt.title("benchmark style=vulkan")
 else:
     raise Exception("TODO")
 
