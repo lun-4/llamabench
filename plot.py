@@ -122,7 +122,6 @@ elif MODE == "openblas":
     plt.title("speed gained or lost by going to openblas")
     plt.legend()
 elif MODE == "vulkan":
-
     ngl_sets = []
     for actor, actor_data in data["vulkan"].items():
         for row in actor_data:
@@ -145,13 +144,57 @@ elif MODE == "vulkan":
                 x_values.append(thread_count)
                 y_values.append(tokens_sec)
 
-            ax.plot(x_values, y_values, label=actor)
+            ax.plot(x_values, y_values, label=actor + " (vulkan)")
+
+        for actor, actor_data in data["cuda"].items():
+            x_values = []
+            y_values = []
+            for row in actor_data:
+                row_ngl = row[0][1]
+                if row_ngl != ngl:
+                    continue
+                thread_count = row[0][0]
+                tokens_sec = row[1]
+                x_values.append(thread_count)
+                y_values.append(tokens_sec)
+
+            ax.plot(x_values, y_values, label=actor + " (cuda)")
+
         ax.set_xlabel("thread count")
         ax.set_ylabel("tokens/sec")
         ax.set_title(f"-ngl {ngl}")
         fig.legend()
 
-    # plt.title("benchmark style=vulkan")
+elif MODE == "cuda":
+
+    ngl_sets = []
+    for actor, actor_data in data["cuda"].items():
+        for row in actor_data:
+            if row[0][1] not in ngl_sets:
+                ngl_sets.append(row[0][1])
+        break
+
+    for ngl in ngl_sets:
+        fig, ax = plt.subplots()
+
+        for actor, actor_data in data["cuda"].items():
+            x_values = []
+            y_values = []
+            for row in actor_data:
+                row_ngl = row[0][1]
+                if row_ngl != ngl:
+                    continue
+                thread_count = row[0][0]
+                tokens_sec = row[1]
+                x_values.append(thread_count)
+                y_values.append(tokens_sec)
+
+            ax.plot(x_values, y_values, label=actor)
+        ax.set_xlabel("thread count")
+        ax.set_ylabel("tokens/sec")
+        ax.set_title(f"cuda -ngl {ngl}")
+        fig.legend()
+
 else:
     raise Exception("TODO")
 
