@@ -31,7 +31,6 @@ data = defaultdict(lambda: defaultdict(list))
 
 for path in Path(BASEPATH).glob("*.csv"):
     with path.open("r") as fd:
-        print(path)
         reader = csv.reader(CommentIgnorer(fd), delimiter="\t")
         header = next(reader)
 
@@ -41,7 +40,7 @@ for path in Path(BASEPATH).glob("*.csv"):
         for row in reader:
             if not row:
                 continue
-            print(row)
+            # print(row)
             hostname, config, _, avg_tokens_per_second, stddev_tokens_per_second = row
             if hostname == "hostname":
                 # this is another header lol ignore
@@ -79,8 +78,15 @@ for path in Path(BASEPATH).glob("*.csv"):
                     data[row_mode][hostname].append(
                         ((thread_count, ngl_count), avg_tokens_per_second)
                     )
+                    print(
+                        f"| {hostname} | {config} | {avg_tokens_per_second} | {stddev_tokens_per_second} |"
+                    )
+
             else:
                 data[row_mode][hostname].append((thread_count, avg_tokens_per_second))
+                print(
+                    f"| {hostname} | {config} | {avg_tokens_per_second} | {stddev_tokens_per_second} |"
+                )
 
 
 pprint.pprint(data)
@@ -121,6 +127,17 @@ elif MODE == "openblas":
     plt.ylabel("delta tokens per second")
     plt.title("speed gained or lost by going to openblas")
     plt.legend()
+
+    fig, ax = plt.subplots()
+    for actor, actor_data in data["openblas"].items():
+        x_values = [item[0] for item in actor_data]
+        y_values = [item[1] for item in actor_data]
+        ax.plot(x_values, y_values, label=actor)
+    ax.set_xlabel("thread count")
+    ax.set_ylabel("tokens per second")
+    ax.set_title("benchmark style=openblas")
+    fig.legend()
+
 elif MODE == "vulkan":
     ngl_sets = []
     for actor, actor_data in data["vulkan"].items():
@@ -164,6 +181,7 @@ elif MODE == "vulkan":
         ax.set_ylabel("tokens/sec")
         ax.set_title(f"-ngl {ngl}")
         fig.legend()
+        fig.savefig(f"llama3_ngl_{ngl}.png")
 
 elif MODE == "cuda":
 
