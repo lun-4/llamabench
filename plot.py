@@ -94,6 +94,7 @@ if MODE == "cpu":
     plt.xlabel("thread count")
     plt.ylabel("tokens per second")
     plt.title("benchmark style=clean")
+    plt.legend()
 elif MODE == "openblas":
     # find the delta between a thread count made on 'cpu' mode vs 'openblas' mode
     # requires reformatting the data as dicts so its easy to find the delta
@@ -119,27 +120,42 @@ elif MODE == "openblas":
     plt.xlabel("thread count")
     plt.ylabel("delta tokens per second")
     plt.title("speed gained or lost by going to openblas")
+    plt.legend()
 elif MODE == "vulkan":
-    fig = plt.figure()
-    ax = plt.axes(projection="3d")
 
-    # Data for a three-dimensional line
-
+    ngl_sets = []
     for actor, actor_data in data["vulkan"].items():
-        x_values = [item[0][0] for item in actor_data]
-        y_values = [item[0][1] for item in actor_data]
-        z_values = [item[1] for item in actor_data]
-        ax.scatter3D(x_values, y_values, z_values, label=actor)
+        for row in actor_data:
+            if row[0][1] not in ngl_sets:
+                ngl_sets.append(row[0][1])
+        break
 
-    ax.set_xlabel("threads")
-    ax.set_ylabel("gpu layers")
-    ax.set_zlabel("tokens/second")
-    plt.title("benchmark style=vulkan")
+    for ngl in ngl_sets:
+        fig, ax = plt.subplots()
+
+        for actor, actor_data in data["vulkan"].items():
+            x_values = []
+            y_values = []
+            for row in actor_data:
+                row_ngl = row[0][1]
+                if row_ngl != ngl:
+                    continue
+                thread_count = row[0][0]
+                tokens_sec = row[1]
+                x_values.append(thread_count)
+                y_values.append(tokens_sec)
+
+            ax.plot(x_values, y_values, label=actor)
+        ax.set_xlabel("thread count")
+        ax.set_ylabel("tokens/sec")
+        ax.set_title(f"-ngl {ngl}")
+        fig.legend()
+
+    # plt.title("benchmark style=vulkan")
 else:
     raise Exception("TODO")
 
 
 # Add legend
-plt.legend()
-# Display the plot
+## Display the plot
 plt.show()
