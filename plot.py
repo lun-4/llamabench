@@ -69,10 +69,11 @@ for path in Path(BASEPATH).glob("*.csv"):
             if row_mode in ("vulkan", "cuda"):
                 ok = True
                 # manual filtering lol
+                # ignore elpis' data for now
                 if hostname == "elpis":
                     ok = False
-                    if thread_count in (1, 6, 11, 12) and ngl_count in (0, 12, 20, 32):
-                        ok = True
+                    # if thread_count in (1, 6, 11, 12) and ngl_count in (0, 12, 20, 32):
+                    #    ok = True
 
                 if ok:
                     data[row_mode][hostname].append(
