@@ -144,7 +144,7 @@ elif MODE == "vulkan":
                 x_values.append(thread_count)
                 y_values.append(tokens_sec)
 
-            ax.plot(x_values, y_values, label=actor + " (vulkan)")
+            ax.plot(x_values, y_values, label=actor + " (vulkan)", linestyle="dotted")
 
         for actor, actor_data in data["cuda"].items():
             x_values = []
