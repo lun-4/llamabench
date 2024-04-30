@@ -101,6 +101,7 @@ if MODE == "cpu":
     plt.ylabel("tokens per second")
     plt.title("benchmark style=clean")
     plt.legend()
+    plt.savefig("llama3_clean.png")
 elif MODE == "openblas":
     # find the delta between a thread count made on 'cpu' mode vs 'openblas' mode
     # requires reformatting the data as dicts so its easy to find the delta
@@ -127,6 +128,7 @@ elif MODE == "openblas":
     plt.ylabel("delta tokens per second")
     plt.title("speed gained or lost by going to openblas")
     plt.legend()
+    plt.savefig("llama3_openblas_comparison.png")
 
     fig, ax = plt.subplots()
     for actor, actor_data in data["openblas"].items():
@@ -137,6 +139,7 @@ elif MODE == "openblas":
     ax.set_ylabel("tokens per second")
     ax.set_title("benchmark style=openblas")
     fig.legend()
+    fig.savefig("llama3_openblas.png")
 
 elif MODE == "vulkan":
     ngl_sets = []
