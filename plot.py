@@ -142,7 +142,7 @@ if MODE == "cpu":
     for actor, actor_data in data["cpu"].items():
         sysinfo = system_infos[actor]
         plot = False
-        if actor in ("arctic-rose", "apparition"):
+        if actor in ("arctic-rose", "apparition", "reticent-iris"):
             plot = True
 
         if plot:
