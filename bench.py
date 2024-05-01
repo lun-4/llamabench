@@ -290,6 +290,11 @@ def parse_system_info(raw: str) -> dict:
         key = key.strip()
         value = value.strip()
         info[key] = value
+
+    n_threads = info["n_threads"]
+    _, total_threads = n_threads.split("/")
+    total_threads = int(total_threads.strip())
+    info["total_threads"] = total_threads
     return info
 
 
