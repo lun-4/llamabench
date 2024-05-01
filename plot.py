@@ -39,7 +39,9 @@ class MicroCSV:
 data = defaultdict(lambda: defaultdict(list))
 system_infos = {}
 
-for path in Path(BASEPATH).glob("*.csv"):
+paths = list(Path(BASEPATH).glob("*.csv"))
+pprint.pprint(paths)
+for path in paths:
     with path.open("r") as fd:
         reader = MicroCSV(fd)
         sysinfo = next(reader)
@@ -82,26 +84,16 @@ for path in Path(BASEPATH).glob("*.csv"):
             avg_tokens_per_second = float(avg_tokens_per_second)
             stddev_tokens_per_second = float(stddev_tokens_per_second)
             if row_mode in ("vulkan", "cuda"):
-                ok = True
-                # manual filtering lol
-                # ignore elpis' data for now
-                if hostname == "elpis":
-                    ok = False
-                    # if thread_count in (1, 6, 11, 12) and ngl_count in (0, 12, 20, 32):
-                    #    ok = True
-
-                if ok:
-                    data[row_mode][hostname].append(
-                        (
-                            (thread_count, ngl_count),
-                            avg_tokens_per_second,
-                            stddev_tokens_per_second,
-                        )
+                data[row_mode][hostname].append(
+                    (
+                        (thread_count, ngl_count),
+                        avg_tokens_per_second,
+                        stddev_tokens_per_second,
                     )
-                    print(
-                        f"| {hostname} | {config} | {avg_tokens_per_second} | {stddev_tokens_per_second} |"
-                    )
-
+                )
+                print(
+                    f"| {hostname} | {config} | {avg_tokens_per_second} | {stddev_tokens_per_second} |"
+                )
             else:
                 data[row_mode][hostname].append(
                     (thread_count, avg_tokens_per_second, stddev_tokens_per_second)
