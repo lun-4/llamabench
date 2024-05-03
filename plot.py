@@ -159,6 +159,35 @@ if MODE == "cpu":
     fig.legend()
     fig.savefig("llama3_avx_comparison.png")
 
+    fig, ax = plt.subplots()
+    for actor, actor_data in data["cpu"].items():
+        plot = False
+        if actor in ("switchblade", "chlorine", "steamdeck"):
+            plot = True
+
+        if plot:
+            x_values = [item[0] for item in actor_data]
+            y_values = [item[1] for item in actor_data]
+            ax.plot(x_values, y_values, label=actor)
+
+            y_stdev = [item[2] for item in actor_data]
+            y_stdev_values_min = [y - y_stdev for y, y_stdev in zip(y_values, y_stdev)]
+            y_stdev_values_max = [y + y_stdev for y, y_stdev in zip(y_values, y_stdev)]
+
+            ax.fill_between(
+                x_values,
+                y_stdev_values_min,
+                y_stdev_values_max,
+                alpha=0.5,
+                label=actor if sysinfo["AVX"] == "1" else f"{actor} (no avx)",
+            )
+
+    ax.set_xlabel("thread count")
+    ax.set_ylabel("tokens per second")
+    ax.set_title("benchmark style=clean (steam deck comparisons)")
+    fig.legend()
+    fig.savefig("llama3_deck_comparison.png")
+
 
 elif MODE == "openblas":
     # find the delta between a thread count made on 'cpu' mode vs 'openblas' mode
