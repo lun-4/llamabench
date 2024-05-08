@@ -108,10 +108,12 @@ pprint.pprint(data)
 pprint.pprint(system_infos)
 
 
-def subplot_with_filter(filter_fn, label_fn, title, filename):
+def subplot_with_filter(filter_fn, label_fn, title, filename, *, field: str = None):
+    field = field or "cpu"
+    style = "clean" if field == "cpu" else "openblas"
 
     fig, ax = plt.subplots()
-    for actor, actor_data in data["cpu"].items():
+    for actor, actor_data in data[field].items():
         sysinfo = system_infos[actor]
         plot = False
         if filter_fn(actor):
@@ -135,7 +137,7 @@ def subplot_with_filter(filter_fn, label_fn, title, filename):
             )
     ax.set_xlabel("thread count")
     ax.set_ylabel("tokens per second")
-    ax.set_title(f"benchmark style=clean ({title})")
+    ax.set_title(f"benchmark style={style} ({title})")
     fig.legend()
     fig.savefig(filename)
 
@@ -220,6 +222,14 @@ elif MODE == "openblas":
     plt.title("speed gained or lost by going to openblas")
     plt.legend()
     plt.savefig("llama3_openblas_comparison.png")
+
+    subplot_with_filter(
+        lambda x: x in ("switchblade", "chlorine", "steamdeck"),
+        lambda actor, _: actor,
+        "steam deck comparison",
+        "llama3_openblas_deck_comparison.png",
+        field="openblas",
+    )
 
     fig, ax = plt.subplots()
     for actor, actor_data in data["openblas"].items():
