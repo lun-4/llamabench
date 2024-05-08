@@ -12,6 +12,7 @@ actors_data = defaultdict(list)
 
 BASEPATH = sys.argv[1]
 MODE = sys.argv[2]
+plt.rcParams["figure.figsize"] = (10, 6)
 
 
 @dataclass
