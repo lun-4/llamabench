@@ -42,7 +42,9 @@ system_infos = {}
 
 final_tsv = Path("./finaldata_donotcommit.tsv")
 with final_tsv.open("w") as fd:
-    pass  # wipe file
+    fd.write(
+        "hostname\tconfig\tavg_tokens_per_second\tstddev_tokens_per_second\traw_timings\n"
+    )
 
 
 def print_final_tsv(line):
@@ -69,7 +71,13 @@ for path in paths:
                 continue
             if row[0] == "system":
                 continue
-            hostname, config, _, avg_tokens_per_second, stddev_tokens_per_second = row
+            (
+                hostname,
+                config,
+                raw_data,
+                avg_tokens_per_second,
+                stddev_tokens_per_second,
+            ) = row
             if hostname == "hostname":
                 # this is another header lol ignore
                 continue
@@ -108,14 +116,14 @@ for path in paths:
                     )
                 )
                 print_final_tsv(
-                    f"{hostname}\t{config}\t{avg_tokens_per_second}\t{stddev_tokens_per_second}"
+                    f"{hostname}\t{config}\t{avg_tokens_per_second}\t{stddev_tokens_per_second}\t{raw_data}"
                 )
             else:
                 data[row_mode][hostname].append(
                     (thread_count, avg_tokens_per_second, stddev_tokens_per_second)
                 )
                 print_final_tsv(
-                    f"{hostname}\t{config}\t{avg_tokens_per_second}\t{stddev_tokens_per_second}"
+                    f"{hostname}\t{config}\t{avg_tokens_per_second}\t{stddev_tokens_per_second}\t{raw_data}"
                 )
 
 
