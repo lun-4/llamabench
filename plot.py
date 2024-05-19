@@ -74,6 +74,10 @@ for path in paths:
                 # this is another header lol ignore
                 continue
 
+            # ignore some hostnames
+            if hostname in ("arctic-rose",):
+                continue
+
             system_infos[hostname] = sysinfo[1]
 
             splitted_config = config.split(" ")
@@ -167,7 +171,7 @@ if MODE == "cpu":
     plt.savefig("llama3_clean.png")
 
     subplot_with_filter(
-        lambda x: x in ("arctic-rose", "apparition", "reticent-iris"),
+        lambda x: x in ("arctic-rose-v2", "apparition", "reticent-iris"),
         lambda actor, sysinfo: actor if sysinfo["AVX"] == "1" else f"{actor} (no avx)",
         "avx comparison",
         "llama3_avx_comparison.png",
