@@ -162,4 +162,5 @@ cython_debug/
 # llama.cpp files
 main-*
 
+# plot.py outputs
 *.png
