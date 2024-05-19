@@ -40,6 +40,17 @@ class MicroCSV:
 data = defaultdict(lambda: defaultdict(list))
 system_infos = {}
 
+final_tsv = Path("./finaldata_donotcommit.tsv")
+with final_tsv.open("w") as fd:
+    pass  # wipe file
+
+
+def print_final_tsv(line):
+    print(line)
+    with final_tsv.open("a") as fd:
+        fd.write(line + "\n")
+
+
 paths = list(Path(BASEPATH).glob("*.csv"))
 pprint.pprint(paths)
 for path in paths:
@@ -92,15 +103,15 @@ for path in paths:
                         stddev_tokens_per_second,
                     )
                 )
-                print(
-                    f"| {hostname} | {config} | {avg_tokens_per_second} | {stddev_tokens_per_second} |"
+                print_final_tsv(
+                    f"{hostname}\t{config}\t{avg_tokens_per_second}\t{stddev_tokens_per_second}"
                 )
             else:
                 data[row_mode][hostname].append(
                     (thread_count, avg_tokens_per_second, stddev_tokens_per_second)
                 )
-                print(
-                    f"| {hostname} | {config} | {avg_tokens_per_second} | {stddev_tokens_per_second} |"
+                print_final_tsv(
+                    f"{hostname}\t{config}\t{avg_tokens_per_second}\t{stddev_tokens_per_second}"
                 )
 
 
